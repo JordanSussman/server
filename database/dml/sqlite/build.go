@@ -85,9 +85,9 @@ OFFSET $3;
 	// a build for an org with a specific event type
 	// in the database.
 	ListOrgBuildsByEvent = `
-SELECT builds.* 
-FROM builds JOIN repos 
-ON repos.id=builds.repo_id 
+SELECT builds.*
+FROM builds JOIN repos
+ON repos.id=builds.repo_id
 WHERE repos.org = $1
 AND builds.event = $2
 ORDER BY id DESC
@@ -108,7 +108,7 @@ FROM builds;
 	SelectOrgBuildCount = `
 SELECT count(*) as count
 FROM builds JOIN repos
-ON repos.id = builds.repo_id 
+ON repos.id = builds.repo_id
 WHERE repos.org = $1;
 `
 
@@ -118,7 +118,7 @@ WHERE repos.org = $1;
 	SelectOrgBuildCountByEvent = `
 SELECT count(*) as count
 FROM builds JOIN repos
-ON repos.id = builds.repo_id 
+ON repos.id = builds.repo_id
 WHERE repos.org = $1
 AND event = $2;
 `
@@ -155,6 +155,17 @@ DELETE
 FROM builds
 WHERE id = ?;
 `
+
+	// SelectPendingAndRunningBuilds represents a joined query
+	// between the builds & repos table to select
+	// the created builds that are in pending or running builds status
+	// since the specified timeframe
+	SelectPendingAndRunningBuilds = `
+SELECT builds.created, builds.number, builds.status, repos.full_name
+FROM builds INNER JOIN repos ON (builds.repo_id = repos.id)
+WHERE builds.created > $1
+AND builds.status = 'running' or builds.status = 'pending';
+`
 )
 
 // createBuildService is a helper function to return
@@ -178,6 +189,7 @@ func createBuildService() *Service {
 			"countByRepoAndEvent": SelectRepoBuildCountByEvent,
 			"countByOrg":          SelectOrgBuildCount,
 			"countByOrgAndEvent":  SelectOrgBuildCountByEvent,
+			"pendingAndRunning":   SelectPendingAndRunningBuilds,
 		},
 		Delete: DeleteBuild,
 	}
